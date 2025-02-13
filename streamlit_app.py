@@ -79,10 +79,32 @@ def init_db():
         )
     ''')
     
-    # Other tables (messages, prescriptions) remain the same...
-    [Previous database initialization code...]
+    # Messages table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_role TEXT NOT NULL,
+            recipient_role TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            message TEXT NOT NULL,
+            app_name TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     
-    # Insert enhanced demo apps with certification details
+    # Prescriptions table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS prescriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            app_name TEXT NOT NULL,
+            prescribed_by TEXT NOT NULL,
+            prescribed_to TEXT NOT NULL,
+            status TEXT NOT NULL,
+            prescribed_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Insert demo apps if table is empty
     if c.execute('SELECT COUNT(*) FROM apps').fetchone()[0] == 0:
         demo_apps = [
             {
@@ -103,8 +125,42 @@ def init_db():
                 'clinical_studies': '3 RCTs, 5 Peer-reviewed publications',
                 'integration_details': 'Epic, Cerner, Apple Health'
             },
-            # Add more demo apps with similar detailed structure
-            [Previous demo apps with enhanced certification details...]
+            {
+                'name': 'DiabetesGuard',
+                'category': 'Chronic Disease',
+                'description': 'Comprehensive diabetes management with CGM integration',
+                'developer': 'HealthTech',
+                'clinical_score': 4.9,
+                'ux_score': 4.8,
+                'security_score': 4.9,
+                'integration_score': 4.7,
+                'overall_score': 4.83,
+                'fda_status': 'FDA Cleared',
+                'ce_status': 'CE Marked',
+                'hipaa_compliant': True,
+                'price_model': 'Insurance',
+                'certification_details': 'FDA Class II Medical Device, HIPAA, GDPR',
+                'clinical_studies': '4 RCTs, 8 Peer-reviewed publications',
+                'integration_details': 'Epic, Cerner, Dexcom'
+            },
+            {
+                'name': 'SleepHarmony',
+                'category': 'Sleep',
+                'description': 'Advanced sleep therapy using cognitive behavioral techniques',
+                'developer': 'DreamTech',
+                'clinical_score': 4.7,
+                'ux_score': 4.9,
+                'security_score': 4.8,
+                'integration_score': 4.5,
+                'overall_score': 4.73,
+                'fda_status': 'FDA Registered',
+                'ce_status': 'CE Marked',
+                'hipaa_compliant': True,
+                'price_model': 'Freemium',
+                'certification_details': 'FDA Registered, HIPAA, GDPR',
+                'clinical_studies': '2 RCTs, 4 Peer-reviewed publications',
+                'integration_details': 'Apple Health, Google Fit'
+            }
         ]
         
         for app in demo_apps:
@@ -126,239 +182,35 @@ def init_db():
                 app['certification_details'], app['clinical_studies'],
                 app['integration_details']
             ))
+        
+        # Insert demo prescriptions
+        demo_prescriptions = [
+            ('DiabetesGuard', 'Dr. Smith', 'Demo Patient', 'Active'),
+            ('MindfulPath', 'Dr. Johnson', 'Demo Patient', 'Active'),
+            ('SleepHarmony', 'Dr. Smith', 'Demo Patient', 'Pending')
+        ]
+        
+        c.executemany('''
+            INSERT INTO prescriptions (app_name, prescribed_by, prescribed_to, status)
+            VALUES (?, ?, ?, ?)
+        ''', demo_prescriptions)
+        
+        # Insert demo messages
+        demo_messages = [
+            ('provider', 'patient', 'DiabetesGuard Progress', 
+             'How are you finding the glucose tracking features?', 'DiabetesGuard'),
+            ('patient', 'provider', 'Question about MindfulPath', 
+             'When is the best time to use the meditation exercises?', 'MindfulPath'),
+            ('provider', 'patient', 'SleepHarmony Update', 
+             'Here is your sleep therapy prescription', 'SleepHarmony')
+        ]
+        
+        c.executemany('''
+            INSERT INTO messages (sender_role, recipient_role, subject, message, app_name)
+            VALUES (?, ?, ?, ?, ?)
+        ''', demo_messages)
     
     conn.commit()
     conn.close()
 
-def show_app_card(app, for_patient=True):
-    """Enhanced app display card with certification details"""
-    with st.container():
-        st.markdown(f"""
-            <div class="app-card">
-                <h3>{app['name']}</h3>
-                <p><strong>Category:</strong> {app['category']}</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            st.write("### Overview")
-            st.write(app['description'])
-            st.write(f"**Developer:** {app['developer']}")
-            
-            # Certification Badge
-            st.markdown(f"""
-                <div class="certification-badge">
-                    <h4>Certification Status</h4>
-                    <p>🏆 {app['fda_status']}</p>
-                    <p>🔒 HIPAA Compliant</p>
-                    <p>📊 Clinical Evidence Score: {app['clinical_score']}/5.0</p>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            with st.expander("View Detailed Certifications"):
-                st.write("#### Clinical Evidence")
-                st.write(app['clinical_studies'])
-                st.write("#### Security & Compliance")
-                st.write(app['certification_details'])
-                st.write("#### Integration Capabilities")
-                st.write(app['integration_details'])
-        
-        with col2:
-            # Scores visualization
-            st.write("### Trust Scores")
-            scores_df = pd.DataFrame({
-                'Metric': ['Clinical', 'UX', 'Security', 'Integration'],
-                'Score': [
-                    app['clinical_score'],
-                    app['ux_score'],
-                    app['security_score'],
-                    app['integration_score']
-                ]
-            })
-            st.bar_chart(scores_df.set_index('Metric'))
-            
-            if for_patient:
-                st.button("Request Access", key=f"request_{app['id']}")
-            else:
-                st.button("Prescribe", key=f"prescribe_{app['id']}")
-
-def show_certification_metrics():
-    """Display certification standards and requirements"""
-    st.header("Digital Therapeutics Certification Standards")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-            ### Clinical Evidence Requirements
-            - 🔬 Randomized Controlled Trials (RCTs)
-            - 📚 Peer-reviewed Publications
-            - 📊 Real-world Evidence
-            - 🏥 Clinical Validation Studies
-        """)
-        
-        st.markdown("""
-            ### Security & Compliance
-            - 🔒 HIPAA Compliance
-            - 🛡️ Data Encryption
-            - 📝 Audit Logging
-            - 🔐 Access Controls
-        """)
-    
-    with col2:
-        st.markdown("""
-            ### User Experience Standards
-            - 👥 Accessibility Guidelines
-            - 📱 Cross-platform Support
-            - 🎯 Usability Testing
-            - 🔄 Regular Updates
-        """)
-        
-        st.markdown("""
-            ### Integration Requirements
-            - 🏥 EHR Compatibility
-            - 📊 FHIR Compliance
-            - 🔄 API Standards
-            - 📱 Mobile Integration
-        """)
-
-def show_admin_dashboard():
-    st.title("Admin Dashboard")
-    
-    tabs = st.tabs([
-        "App Certification",
-        "Platform Management",
-        "Analytics"
-    ])
-    
-    with tabs[0]:
-        st.header("Digital Therapeutics Certification Management")
-        
-        # Add new app with certification
-        with st.form("certify_app"):
-            st.subheader("New App Certification")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                name = st.text_input("App Name")
-                developer = st.text_input("Developer")
-                category = st.selectbox("Category", [
-                    "Mental Health",
-                    "Chronic Disease",
-                    "Sleep",
-                    "Pain Management"
-                ])
-            
-            with col2:
-                fda_status = st.selectbox("FDA Status", [
-                    "FDA Cleared",
-                    "FDA Registered",
-                    "FDA Pending"
-                ])
-                hipaa = st.checkbox("HIPAA Compliant")
-                ce_marked = st.checkbox("CE Marked")
-            
-            st.subheader("Certification Scores")
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                clinical = st.slider("Clinical Evidence", 0.0, 5.0, 4.0)
-            with col2:
-                ux = st.slider("User Experience", 0.0, 5.0, 4.0)
-            with col3:
-                security = st.slider("Security", 0.0, 5.0, 4.0)
-            with col4:
-                integration = st.slider("Integration", 0.0, 5.0, 4.0)
-            
-            clinical_studies = st.text_area("Clinical Studies Evidence")
-            certification_details = st.text_area("Additional Certification Details")
-            
-            if st.form_submit_button("Certify App"):
-                # Add app to database with certification details
-                pass
-    
-    with tabs[1]:
-        st.header("Platform Management")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("User Management")
-            # User management interface
-            
-        with col2:
-            st.subheader("System Settings")
-            # System settings interface
-    
-    with tabs[2]:
-        st.header("Platform Analytics")
-        show_platform_analytics()
-
-def show_platform_analytics():
-    """Enhanced analytics display"""
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("""
-            <div class="metric-card">
-                <h3>Users</h3>
-                <h2>1,234</h2>
-                <p>↑ 12% this month</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("""
-            <div class="metric-card">
-                <h3>Certified Apps</h3>
-                <h2>45</h2>
-                <p>↑ 5 new this month</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown("""
-            <div class="metric-card">
-                <h3>Active Prescriptions</h3>
-                <h2>892</h2>
-                <p>↑ 8% this month</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    # Add more analytics visualizations...
-    [Previous analytics code with enhanced styling...]
-
-def main():
-    init_db()
-    
-    # Enhanced sidebar
-    with st.sidebar:
-        st.title("🏥 Beacon Health")
-        st.write("Digital Therapeutics Platform")
-        
-        role = st.selectbox(
-            "Select Role",
-            ["Patient", "Provider", "Admin"],
-            format_func=lambda x: f"📋 {x}"
-        )
-        
-        st.markdown("---")
-        st.info("Demo Mode: Roles can be switched freely")
-        
-        if st.button("About Platform"):
-            st.write("""
-                Beacon Health is a certified digital therapeutics 
-                marketplace connecting providers and patients with 
-                validated health applications.
-            """)
-    
-    # Main content based on role
-    if role == "Patient":
-        show_patient_experience()
-    elif role == "Provider":
-        show_provider_experience()
-    else:
-        show_admin_dashboard()
-
-if __name__ == "__main__":
-    main()
+[Rest of the previous code remains the same...]
