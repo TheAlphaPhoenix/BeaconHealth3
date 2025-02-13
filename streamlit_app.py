@@ -1,216 +1,265 @@
 import streamlit as st
+import sqlite3
 import pandas as pd
 from datetime import datetime
-import sqlite3
 
-# Set page configuration and styling
-st.set_page_config(
-    page_title="Beacon Health",
-    page_icon="🏥",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Initialize and connect to SQLite database (cached for performance)
+@st.cache_resource
+def get_connection():
+    return sqlite3.connect('beacon_health.db', check_same_thread=False)
 
-# Custom CSS for better UI
-st.markdown("""
-    <style>
-    .main {
-        padding: 0rem 1rem;
-    }
-    .stTabs {
-        background-color: #f8f9fa;
-        padding: 10px;
-        border-radius: 5px;
-    }
-    .stButton > button {
-        width: 100%;
-    }
-    .css-1d391kg {
-        padding: 1rem;
-    }
-    .certification-badge {
-        background-color: #e7f3fe;
-        border-left: 3px solid #2196F3;
-        padding: 10px;
-        margin: 10px 0;
-    }
-    .metric-card {
-        background-color: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .app-card {
-        background-color: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin: 10px 0;
-    }
-    </style>
-""", unsafe_allow_html=True)
+conn = get_connection()
+cursor = conn.cursor()
 
 def init_db():
-    """Initialize SQLite database with enhanced schema"""
-    conn = sqlite3.connect('beacon_health.db')
-    c = conn.cursor()
-    
-    # Apps table with certification fields
-    c.execute('''
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS apps (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            category TEXT NOT NULL,
+            name TEXT,
             description TEXT,
-            developer TEXT,
-            clinical_score FLOAT,
-            ux_score FLOAT,
-            security_score FLOAT,
-            integration_score FLOAT,
-            overall_score FLOAT,
-            fda_status TEXT,
-            ce_status TEXT,
-            hipaa_compliant BOOLEAN,
-            price_model TEXT,
-            certification_details TEXT,
-            clinical_studies TEXT,
-            integration_details TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            category TEXT,
+            fda_cleared TEXT,
+            clinical_evidence_score REAL,
+            user_experience_score REAL,
+            security_compliance_score REAL,
+            integration_capabilities_score REAL
         )
     ''')
-    
-    # Messages table
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sender_role TEXT NOT NULL,
-            recipient_role TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            message TEXT NOT NULL,
-            app_name TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Prescriptions table
-    c.execute('''
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS prescriptions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            app_name TEXT NOT NULL,
-            prescribed_by TEXT NOT NULL,
-            prescribed_to TEXT NOT NULL,
-            status TEXT NOT NULL,
-            prescribed_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            patient_name TEXT,
+            provider_name TEXT,
+            app_id INTEGER,
+            prescription_date TEXT
         )
     ''')
-    
-    # Insert demo apps if table is empty
-    if c.execute('SELECT COUNT(*) FROM apps').fetchone()[0] == 0:
-        demo_apps = [
-            {
-                'name': 'MindfulPath',
-                'category': 'Mental Health',
-                'description': 'AI-powered CBT therapy platform with personalized interventions',
-                'developer': 'NeuroTech Solutions',
-                'clinical_score': 4.8,
-                'ux_score': 4.7,
-                'security_score': 4.9,
-                'integration_score': 4.6,
-                'overall_score': 4.75,
-                'fda_status': 'FDA Cleared',
-                'ce_status': 'CE Marked',
-                'hipaa_compliant': True,
-                'price_model': 'Subscription',
-                'certification_details': 'FDA Class II Medical Device, HIPAA, GDPR, ISO 27001',
-                'clinical_studies': '3 RCTs, 5 Peer-reviewed publications',
-                'integration_details': 'Epic, Cerner, Apple Health'
-            },
-            {
-                'name': 'DiabetesGuard',
-                'category': 'Chronic Disease',
-                'description': 'Comprehensive diabetes management with CGM integration',
-                'developer': 'HealthTech',
-                'clinical_score': 4.9,
-                'ux_score': 4.8,
-                'security_score': 4.9,
-                'integration_score': 4.7,
-                'overall_score': 4.83,
-                'fda_status': 'FDA Cleared',
-                'ce_status': 'CE Marked',
-                'hipaa_compliant': True,
-                'price_model': 'Insurance',
-                'certification_details': 'FDA Class II Medical Device, HIPAA, GDPR',
-                'clinical_studies': '4 RCTs, 8 Peer-reviewed publications',
-                'integration_details': 'Epic, Cerner, Dexcom'
-            },
-            {
-                'name': 'SleepHarmony',
-                'category': 'Sleep',
-                'description': 'Advanced sleep therapy using cognitive behavioral techniques',
-                'developer': 'DreamTech',
-                'clinical_score': 4.7,
-                'ux_score': 4.9,
-                'security_score': 4.8,
-                'integration_score': 4.5,
-                'overall_score': 4.73,
-                'fda_status': 'FDA Registered',
-                'ce_status': 'CE Marked',
-                'hipaa_compliant': True,
-                'price_model': 'Freemium',
-                'certification_details': 'FDA Registered, HIPAA, GDPR',
-                'clinical_studies': '2 RCTs, 4 Peer-reviewed publications',
-                'integration_details': 'Apple Health, Google Fit'
-            }
-        ]
-        
-        for app in demo_apps:
-            c.execute('''
-                INSERT INTO apps (
-                    name, category, description, developer,
-                    clinical_score, ux_score, security_score,
-                    integration_score, overall_score,
-                    fda_status, ce_status, hipaa_compliant,
-                    price_model, certification_details,
-                    clinical_studies, integration_details
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                app['name'], app['category'], app['description'],
-                app['developer'], app['clinical_score'], app['ux_score'],
-                app['security_score'], app['integration_score'],
-                app['overall_score'], app['fda_status'], app['ce_status'],
-                app['hipaa_compliant'], app['price_model'],
-                app['certification_details'], app['clinical_studies'],
-                app['integration_details']
-            ))
-        
-        # Insert demo prescriptions
-        demo_prescriptions = [
-            ('DiabetesGuard', 'Dr. Smith', 'Demo Patient', 'Active'),
-            ('MindfulPath', 'Dr. Johnson', 'Demo Patient', 'Active'),
-            ('SleepHarmony', 'Dr. Smith', 'Demo Patient', 'Pending')
-        ]
-        
-        c.executemany('''
-            INSERT INTO prescriptions (app_name, prescribed_by, prescribed_to, status)
-            VALUES (?, ?, ?, ?)
-        ''', demo_prescriptions)
-        
-        # Insert demo messages
-        demo_messages = [
-            ('provider', 'patient', 'DiabetesGuard Progress', 
-             'How are you finding the glucose tracking features?', 'DiabetesGuard'),
-            ('patient', 'provider', 'Question about MindfulPath', 
-             'When is the best time to use the meditation exercises?', 'MindfulPath'),
-            ('provider', 'patient', 'SleepHarmony Update', 
-             'Here is your sleep therapy prescription', 'SleepHarmony')
-        ]
-        
-        c.executemany('''
-            INSERT INTO messages (sender_role, recipient_role, subject, message, app_name)
-            VALUES (?, ?, ?, ?, ?)
-        ''', demo_messages)
-    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender TEXT,
+            receiver TEXT,
+            message TEXT,
+            timestamp TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS progress (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_name TEXT,
+            app_id INTEGER,
+            progress_percent INTEGER
+        )
+    ''')
     conn.commit()
-    conn.close()
 
-[Rest of the previous code remains the same...]
+def load_demo_data():
+    df_apps = pd.read_sql_query("SELECT * FROM apps", conn)
+    if df_apps.empty:
+        apps_demo = [
+            ("MindRelax", "A mindfulness and meditation app.", "Mental Health", "FDA Cleared", 4.5, 4.2, 4.8, 4.0),
+            ("FitTrack", "A fitness and activity tracking app.", "Wellness", "Pending", 4.0, 4.0, 4.5, 3.8),
+            ("SleepWell", "An app to improve sleep quality.", "Sleep Health", "FDA Cleared", 4.8, 4.6, 4.9, 4.5)
+        ]
+        cursor.executemany('''
+            INSERT INTO apps (name, description, category, fda_cleared, clinical_evidence_score, user_experience_score, security_compliance_score, integration_capabilities_score)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', apps_demo)
+        conn.commit()
+
+    df_prescriptions = pd.read_sql_query("SELECT * FROM prescriptions", conn)
+    if df_prescriptions.empty:
+        prescriptions_demo = [
+            ("John Doe", "Dr. Smith", 1, datetime.now().strftime("%Y-%m-%d")),
+            ("John Doe", "Dr. Adams", 3, datetime.now().strftime("%Y-%m-%d"))
+        ]
+        cursor.executemany('''
+            INSERT INTO prescriptions (patient_name, provider_name, app_id, prescription_date)
+            VALUES (?, ?, ?, ?)
+        ''', prescriptions_demo)
+        conn.commit()
+
+    df_progress = pd.read_sql_query("SELECT * FROM progress", conn)
+    if df_progress.empty:
+        progress_demo = [
+            ("John Doe", 1, 50),
+            ("John Doe", 3, 70)
+        ]
+        cursor.executemany('''
+            INSERT INTO progress (patient_name, app_id, progress_percent)
+            VALUES (?, ?, ?)
+        ''', progress_demo)
+        conn.commit()
+
+    df_messages = pd.read_sql_query("SELECT * FROM messages", conn)
+    if df_messages.empty:
+        messages_demo = [
+            ("John Doe", "Dr. Smith", "I have some questions about my prescription.", datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+            ("Dr. Smith", "John Doe", "Sure, feel free to ask!", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        ]
+        cursor.executemany('''
+            INSERT INTO messages (sender, receiver, message, timestamp)
+            VALUES (?, ?, ?, ?)
+        ''', messages_demo)
+        conn.commit()
+
+init_db()
+load_demo_data()
+
+# Custom CSS for a modern UI look
+st.markdown(
+    """
+    <style>
+    .stButton>button {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 10px 20px;
+        font-size: 16px;
+    }
+    .stTextInput>div>input, .stTextArea>div>textarea {
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+def patient_view():
+    st.header("Patient Dashboard")
+    
+    st.subheader("Digital Therapeutics Directory")
+    apps_df = pd.read_sql_query("SELECT * FROM apps", conn)
+    st.dataframe(apps_df[['name', 'description', 'category', 'fda_cleared',
+                            'clinical_evidence_score', 'user_experience_score', 'security_compliance_score', 'integration_capabilities_score']])
+    
+    st.subheader("My Prescriptions")
+    patient_name = "John Doe"
+    prescriptions_df = pd.read_sql_query("""
+        SELECT prescriptions.*, apps.name as app_name 
+        FROM prescriptions 
+        JOIN apps ON prescriptions.app_id = apps.id 
+        WHERE patient_name=?
+    """, conn, params=(patient_name,))
+    st.dataframe(prescriptions_df[['provider_name', 'app_name', 'prescription_date']])
+    
+    st.subheader("My Progress")
+    progress_df = pd.read_sql_query("""
+        SELECT progress.*, apps.name as app_name 
+        FROM progress 
+        JOIN apps ON progress.app_id = apps.id 
+        WHERE patient_name=?
+    """, conn, params=(patient_name,))
+    st.dataframe(progress_df[['app_name', 'progress_percent']])
+    
+    st.subheader("Messages")
+    messages_df = pd.read_sql_query("""
+        SELECT * FROM messages 
+        WHERE sender=? OR receiver=?
+    """, conn, params=(patient_name, patient_name))
+    st.dataframe(messages_df[['sender', 'receiver', 'message', 'timestamp']])
+    
+    st.markdown("### Send a Message")
+    with st.form("patient_message_form"):
+        message = st.text_area("Your message to your provider")
+        submit = st.form_submit_button("Send")
+        if submit and message:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cursor.execute("INSERT INTO messages (sender, receiver, message, timestamp) VALUES (?, ?, ?, ?)", 
+                           (patient_name, "Provider", message, timestamp))
+            conn.commit()
+            st.success("Message sent!")
+            st.experimental_rerun()
+
+def provider_view():
+    st.header("Provider Dashboard")
+    
+    st.subheader("Prescribe Digital Therapeutics")
+    apps_df = pd.read_sql_query("SELECT * FROM apps", conn)
+    with st.form("prescription_form"):
+        patient_name = st.text_input("Patient Name", "John Doe")
+        app_name = st.selectbox("Select App", apps_df['name'].tolist())
+        submit = st.form_submit_button("Prescribe")
+        if submit:
+            app_id = pd.read_sql_query("SELECT id FROM apps WHERE name=?", conn, params=(app_name,)).iloc[0]['id']
+            prescription_date = datetime.now().strftime("%Y-%m-%d")
+            cursor.execute("INSERT INTO prescriptions (patient_name, provider_name, app_id, prescription_date) VALUES (?, ?, ?, ?)", 
+                           (patient_name, "Dr. Smith", app_id, prescription_date))
+            conn.commit()
+            st.success(f"Prescribed {app_name} to {patient_name}!")
+            st.experimental_rerun()
+    
+    st.subheader("Patient Progress")
+    progress_df = pd.read_sql_query("""
+        SELECT progress.*, apps.name as app_name 
+        FROM progress 
+        JOIN apps ON progress.app_id = apps.id 
+        WHERE patient_name=?
+    """, conn, params=("John Doe",))
+    st.dataframe(progress_df[['patient_name', 'app_name', 'progress_percent']])
+    
+    st.subheader("Patient Messages")
+    messages_df = pd.read_sql_query("SELECT * FROM messages WHERE receiver=?", conn, params=("Dr. Smith",))
+    st.dataframe(messages_df[['sender', 'message', 'timestamp']])
+
+def admin_view():
+    st.header("Admin Dashboard")
+    
+    st.subheader("Manage App Certifications")
+    apps_df = pd.read_sql_query("SELECT * FROM apps", conn)
+    st.dataframe(apps_df[['name', 'fda_cleared', 'clinical_evidence_score', 'user_experience_score', 'security_compliance_score', 'integration_capabilities_score']])
+    
+    with st.form("update_cert_form"):
+        app_to_update = st.selectbox("Select App to Update", apps_df['name'].tolist())
+        fda_status = st.text_input("FDA/Cleared Status", "FDA Cleared")
+        clinical_score = st.number_input("Clinical Evidence Score", 0.0, 5.0, step=0.1, value=4.5)
+        ux_score = st.number_input("User Experience Score", 0.0, 5.0, step=0.1, value=4.5)
+        security_score = st.number_input("Security & Compliance Score", 0.0, 5.0, step=0.1, value=4.5)
+        integration_score = st.number_input("Integration Capabilities Score", 0.0, 5.0, step=0.1, value=4.5)
+        submit = st.form_submit_button("Update Certification")
+        if submit:
+            cursor.execute("""
+                UPDATE apps 
+                SET fda_cleared=?, clinical_evidence_score=?, user_experience_score=?, security_compliance_score=?, integration_capabilities_score=?
+                WHERE name=?
+            """, (fda_status, clinical_score, ux_score, security_score, integration_score, app_to_update))
+            conn.commit()
+            st.success("App certification updated!")
+            st.experimental_rerun()
+    
+    st.subheader("User Management")
+    # Demo user list
+    users_data = {
+        "Name": ["John Doe", "Dr. Smith", "Admin User"],
+        "Role": ["Patient", "Provider", "Admin"]
+    }
+    st.table(pd.DataFrame(users_data))
+    
+    st.subheader("Analytics")
+    total_apps = pd.read_sql_query("SELECT COUNT(*) as count FROM apps", conn).iloc[0]['count']
+    total_prescriptions = pd.read_sql_query("SELECT COUNT(*) as count FROM prescriptions", conn).iloc[0]['count']
+    total_messages = pd.read_sql_query("SELECT COUNT(*) as count FROM messages", conn).iloc[0]['count']
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Apps", total_apps)
+    col2.metric("Total Prescriptions", total_prescriptions)
+    col3.metric("Total Messages", total_messages)
+
+def main():
+    st.set_page_config(page_title="Beacon Health", layout="wide")
+    st.title("Beacon Health")
+    
+    # Role switching for demo purposes (no login required)
+    role = st.sidebar.selectbox("Select Role", ["Patient", "Provider", "Admin"])
+    
+    if role == "Patient":
+        patient_view()
+    elif role == "Provider":
+        provider_view()
+    elif role == "Admin":
+        admin_view()
+
+if __name__ == "__main__":
+    main()
