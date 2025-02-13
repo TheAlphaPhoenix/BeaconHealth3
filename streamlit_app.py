@@ -14,16 +14,19 @@ st.set_page_config(
 # Custom CSS with modern, dreamy colors
 st.markdown("""
     <style>
-    /* Modern color palette */
+    /* Modern color palette with improved contrast */
     :root {
-        --primary-color: #6C63FF;      /* Dreamy purple */
-        --secondary-color: #4FACFE;    /* Soft blue */
-        --accent-color: #00F2FE;       /* Bright cyan */
-        --success-color: #4CAF50;      /* Green */
-        --warning-color: #FF9800;      /* Orange */
-        --error-color: #f44336;        /* Red */
-        --background-light: #F8F9FE;   /* Light gray-blue */
-        --text-primary: #2C3E50;       /* Dark blue-gray */
+        --primary-color: #4A3AFF;      /* Darker purple */
+        --secondary-color: #0076E3;    /* Darker blue */
+        --accent-color: #00B8D4;       /* Darker cyan */
+        --success-color: #2E7D32;      /* Darker green */
+        --warning-color: #E65100;      /* Darker orange */
+        --error-color: #C62828;        /* Darker red */
+        --background-light: #FFFFFF;   /* Pure white */
+        --text-primary: #1A237E;       /* Very dark blue */
+        --text-secondary: #283593;     /* Dark indigo */
+        --text-body: #1F1F1F;          /* Near black */
+        --card-background: #FFFFFF;    /* White */
     }
 
     .stApp {
@@ -36,13 +39,24 @@ st.markdown("""
 
     /* Modern card styling */
     .card {
-        background: white;
+        background: var(--card-background);
         padding: 1.5rem;
         border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(108, 99, 255, 0.1);
+        box-shadow: 0 4px 20px rgba(26, 35, 126, 0.1);
         margin-bottom: 1.5rem;
-        border: 1px solid rgba(108, 99, 255, 0.1);
+        border: 1px solid rgba(26, 35, 126, 0.1);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        color: var(--text-body);
+    }
+    
+    .card h3, .card h4 {
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+    
+    .card p {
+        color: var(--text-body);
+        line-height: 1.6;
     }
 
     .card:hover {
@@ -95,25 +109,55 @@ st.markdown("""
     .metric-label {
         font-size: 1rem;
         color: var(--text-primary);
-        font-weight: 500;
+        font-weight: 600;
+    }
+    
+    /* Enhanced text contrast for all text elements */
+    p, li, span:not(.status-badge):not(.feature-badge) {
+        color: var(--text-body);
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--text-primary);
+    }
+    
+    .feature-badge {
+        background: linear-gradient(45deg, #E8EAF6, #C5CAE9);
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+    
+    /* Improved contrast for messages */
+    .message-card {
+        color: var(--text-body);
+    }
+    
+    .message-card h4 {
+        color: var(--text-primary);
+    }
+    
+    /* Better contrast for expandable sections */
+    div[data-testid="stExpander"] {
+        color: var(--text-body);
     }
 
     /* Status badges */
     .status-badge {
         padding: 6px 12px;
         border-radius: 20px;
-        font-weight: 500;
+        font-weight: 600;
         display: inline-block;
         margin: 4px;
+        text-shadow: 0px 1px 2px rgba(0,0,0,0.2);
     }
 
     .status-active {
-        background: linear-gradient(45deg, #4CAF50, #81C784);
+        background: linear-gradient(45deg, #2E7D32, #388E3C);
         color: white;
     }
 
     .status-pending {
-        background: linear-gradient(45deg, #FF9800, #FFB74D);
+        background: linear-gradient(45deg, #E65100, #EF6C00);
         color: white;
     }
 
