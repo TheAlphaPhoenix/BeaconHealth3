@@ -1,4 +1,6 @@
 import streamlit as st
+st.set_page_config(page_title="Beacon Health", layout="wide")  # Must be the first Streamlit command
+
 import sqlite3
 import pandas as pd
 from datetime import datetime
@@ -7,7 +9,6 @@ from datetime import datetime
 # Database Setup and Demo Data Functions
 # ------------------------------------------------------------------------------
 
-# Use st.cache_resource to maintain a persistent DB connection for performance.
 @st.cache_resource
 def get_connection():
     return sqlite3.connect('beacon_health.db', check_same_thread=False)
@@ -174,7 +175,6 @@ def patient_view():
     
     st.subheader("Digital Therapeutics Directory")
     apps_df = pd.read_sql_query("SELECT * FROM apps", conn)
-    # Display detailed information for each app
     st.dataframe(apps_df[['name', 'description', 'category', 'fda_status',
                             'clinical_evidence_score', 'user_experience_score', 
                             'security_compliance_score', 'integration_capabilities_score']])
@@ -202,7 +202,7 @@ def patient_view():
     if not progress_df.empty:
         st.dataframe(progress_df[['app_name', 'progress_percent']])
     else:
-        st.info("No progress data available.")
+        st.info("No progress updates available.")
     
     st.subheader("Messages")
     messages_df = pd.read_sql_query("""
@@ -221,7 +221,6 @@ def patient_view():
         submit = st.form_submit_button("Send")
         if submit and message:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            # In a real app, receiver would be selected; here we use a placeholder.
             cursor.execute("INSERT INTO messages (sender, receiver, message, timestamp) VALUES (?, ?, ?, ?)", 
                            (patient_name, "Provider", message, timestamp))
             conn.commit()
@@ -238,7 +237,6 @@ def provider_view():
         app_name = st.selectbox("Select App", apps_df['name'].tolist())
         submit = st.form_submit_button("Prescribe")
         if submit:
-            # Retrieve app id based on selected app name
             app_id_row = pd.read_sql_query("SELECT id FROM apps WHERE name=?", conn, params=(app_name,))
             if not app_id_row.empty:
                 app_id = app_id_row.iloc[0]['id']
@@ -252,7 +250,6 @@ def provider_view():
                 st.error("Selected app not found.")
     
     st.subheader("Patient Progress")
-    # For demo purposes, we use a placeholder patient name.
     progress_df = pd.read_sql_query("""
         SELECT progress.*, apps.name AS app_name 
         FROM progress 
@@ -299,7 +296,6 @@ def admin_view():
             st.experimental_rerun()
     
     st.subheader("User Management")
-    # Demo user list (expandable in future with proper user tables)
     users_data = {
         "Name": ["John Doe", "Dr. Smith", "Admin User"],
         "Role": ["Patient", "Provider", "Admin"]
@@ -324,24 +320,19 @@ def admin_view():
 # ------------------------------------------------------------------------------
 
 def main():
-    # Set page configuration for a modern, wide layout
-    st.set_page_config(page_title="Beacon Health", layout="wide")
     st.title("Beacon Health - Digital Therapeutics Marketplace")
     
     # Sidebar for role switching and future self-prompting instructions
     st.sidebar.header("Demo Role Selector")
     role = st.sidebar.selectbox("Select Role", ["Patient", "Provider", "Admin"])
     
-    # Developer note: In future, replace role switching with proper authentication
-    st.sidebar.info("Note: Role switching is for demo purposes only.\n\nFuture versions will include full authentication.")
-    
-    # Self-prompting reminder for developers
+    st.sidebar.info("Note: Role switching is for demo purposes only. Future versions will include full authentication.")
     st.sidebar.markdown("""
     **Developer To-Do:**
-    - Integrate real user authentication
-    - Expand messaging system for multi-party communication
-    - Enhance analytics with interactive charts
-    - Improve UI/UX with advanced theming and custom components
+    - Integrate real user authentication.
+    - Expand messaging system for multi-party communication.
+    - Enhance analytics with interactive charts.
+    - Improve UI/UX with advanced theming and custom components.
     """)
     
     if role == "Patient":
@@ -353,4 +344,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
