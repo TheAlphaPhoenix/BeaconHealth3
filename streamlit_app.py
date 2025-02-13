@@ -87,7 +87,7 @@ CSS_STYLES = """
 
 def create_badge_html(recipient_name, achievement, category, issue_date, notes, qr_url):
     """Create the HTML for the badge with proper escaping"""
-    html_template = """
+    html_template = ""
     <!DOCTYPE html>
     <html>
     <head>
