@@ -371,4 +371,262 @@ def show_patient_dashboard():
                     st.markdown(f"""
                         <div style="padding: 1rem; background: linear-gradient(135deg, #F8F9FE 0%, #E8EAF6 100%); border-radius: 10px;">
                             <h4>{app['description']}</h4>
-                            <p>Prescribed: {prescription['prescribed_date'].strftime('%
+                            <p>Prescribed: {prescription['prescribed_date'].strftime('%Y-%m-%d')}</p>
+                            <p>Next Review: {prescription['next_review'].strftime('%Y-%m-%d')}</p>
+                            <div style="margin-top: 1rem;">
+                                <span style="color: #4CAF50;">●</span> {prescription['progress_notes']}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Adherence progress bar
+                    st.write("Adherence Rate")
+                    st.progress(prescription['adherence_rate'] / 100)
+                    st.write(f"{prescription['adherence_rate']}% adherence")
+                
+                with col2:
+                    if st.button("📱 Launch App", key=f"launch_{app['id']}"):
+                        st.success(f"Launching {app['name']}...")
+                    
+                    if st.button("💬 Message Provider", key=f"msg_{app['id']}"):
+                        st.info(f"Opening message composer for {app['name']}...")
+                    
+                    if st.button("📊 View Progress", key=f"progress_{app['id']}"):
+                        st.info("Loading your progress data...")
+                        
+                    st.markdown("""
+                        <div style="margin-top: 1rem; padding: 1rem; background-color: #E3F2FD; border-radius: 10px;">
+                            <h5>🎯 Next Goals</h5>
+                            <ul style="list-style-type: none; padding-left: 0;">
+                                <li>✓ Complete daily check-in</li>
+                                <li>◯ Review weekly progress</li>
+                                <li>◯ Schedule provider chat</li>
+                            </ul>
+                        </div>
+                    """, unsafe_allow_html=True)
+    
+    with tabs[1]:
+        st.header("Discover Digital Therapies")
+        
+        # Enhanced filters
+        col1, col2 = st.columns(2)
+        with col1:
+            category = st.selectbox(
+                "Category",
+                ["All"] + list(st.session_state.apps['category'].unique()),
+                format_func=lambda x: f"🔍 {x}"
+            )
+        with col2:
+            fda_status = st.selectbox(
+                "FDA Status",
+                ["All"] + list(st.session_state.apps['fda_status'].unique()),
+                format_func=lambda x: f"🏆 {x}"
+            )
+        
+        # Filter apps
+        filtered_apps = st.session_state.apps
+        if category != "All":
+            filtered_apps = filtered_apps[filtered_apps['category'] == category]
+        if fda_status != "All":
+            filtered_apps = filtered_apps[filtered_apps['fda_status'] == fda_status]
+        
+        # Show filtered apps
+        for _, app in filtered_apps.iterrows():
+            show_app_card(app)
+    
+    with tabs[2]:
+        st.header("💌 Messages & Updates")
+        
+        # New message composer
+        with st.expander("✏️ New Message"):
+            with st.form("new_message"):
+                app_name = st.selectbox("Select App", options=[None] + list(st.session_state.apps['name']))
+                message = st.text_area("Your Message")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    priority = st.selectbox("Priority", ["Normal", "Urgent"])
+                with col2:
+                    notify = st.checkbox("Send notification", value=True)
+                
+                if st.form_submit_button("Send Message"):
+                    st.success("Message sent successfully!")
+                    st.balloons()
+        
+        # Message inbox
+        for _, msg in st.session_state.messages.iterrows():
+            st.markdown(f"""
+                <div class="message-card" style="border-left-color: {'#4CAF50' if msg['read'] else '#FF9800'}">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h4>{msg['sender']}</h4>
+                        <small>{msg['date'].strftime('%Y-%m-%d %H:%M')}</small>
+                    </div>
+                    <p>{msg['content']}</p>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <span class="feature-badge">{msg['app']}</span>
+                        <span class="status-badge status-{'active' if msg['read'] else 'pending'}">
+                            {'Read' if msg['read'] else 'New'}
+                        </span>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+def show_provider_dashboard():
+    st.title("👩‍⚕️ Provider Dashboard")
+    
+    # Provider quick stats
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""
+            <div class="metric-container">
+                <div class="big-number">24</div>
+                <div class="metric-label">Active Patients</div>
+                <div style="color: #4CAF50; font-size: 0.9rem;">↑ 3 new this month</div>
+            </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+            <div class="metric-container">
+                <div class="big-number">92%</div>
+                <div class="metric-label">Patient Engagement</div>
+                <div style="color: #4CAF50; font-size: 0.9rem;">↑ 5% improvement</div>
+            </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown("""
+            <div class="metric-container">
+                <div class="big-number">8</div>
+                <div class="metric-label">Pending Reviews</div>
+                <div style="color: #FF9800; font-size: 0.9rem;">Due this week</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # Main provider tabs
+    tabs = st.tabs(["👥 Patients", "📱 Prescribe Apps", "📊 Analytics"])
+    
+    with tabs[0]:
+        st.header("Patient Management")
+        
+        # Patient search and filters
+        col1, col2 = st.columns([2,1])
+        with col1:
+            st.text_input("🔍 Search Patients", placeholder="Enter patient name or ID")
+        with col2:
+            st.selectbox("Filter By", ["All Patients", "Active", "Pending Review", "New"])
+        
+        # Patient list
+        patients = [
+            {"name": "John Davis", "age": 45, "condition": "Type 2 Diabetes", "adherence": 85},
+            {"name": "Sarah Chen", "age": 32, "condition": "Anxiety", "adherence": 92},
+            {"name": "Michael Brown", "age": 58, "condition": "Hypertension", "adherence": 78}
+        ]
+        
+        for patient in patients:
+            with st.expander(f"🧑 {patient['name']} - Age {patient['age']}"):
+                col1, col2 = st.columns([2,1])
+                
+                with col1:
+                    st.write(f"**Condition:** {patient['condition']}")
+                    st.write("**Adherence Rate**")
+                    st.progress(patient['adherence'] / 100)
+                    st.write(f"{patient['adherence']}% adherence")
+                
+                with col2:
+                    if st.button("👁️ View Details", key=f"view_{patient['name']}"):
+                        st.info(f"Loading details for {patient['name']}...")
+                    
+                    if st.button("💊 Prescribe App", key=f"prescribe_{patient['name']}"):
+                        st.success(f"Opening prescription form for {patient['name']}")
+                        
+                    if st.button("📝 Add Note", key=f"note_{patient['name']}"):
+                        st.info("Opening progress note...")
+    
+    with tabs[1]:
+        st.header("Digital Therapeutics Library")
+        for _, app in st.session_state.apps.iterrows():
+            show_app_card(app)
+    
+    with tabs[2]:
+        st.header("Practice Analytics")
+        
+        # Practice metrics
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Patient Engagement")
+            engagement_data = pd.DataFrame(
+                np.random.randint(70, 100, size=(7, 1)),
+                index=pd.date_range(start='2024-02-01', periods=7),
+                columns=['Engagement %']
+            )
+            st.line_chart(engagement_data)
+        
+        with col2:
+            st.subheader("App Usage Distribution")
+            app_usage = pd.DataFrame({
+                'App': st.session_state.apps['name'],
+                'Users': [15, 12, 8]
+            })
+            st.bar_chart(app_usage.set_index('App'))
+
+def main():
+    # Sidebar configuration
+    with st.sidebar:
+        st.title("🏥 Beacon Health")
+        st.markdown("""
+            <div style="padding: 1rem; background: white; border-radius: 10px; margin-bottom: 1rem;">
+                <h3 style="margin: 0; color: var(--primary-color);">Digital Therapeutics Platform</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Role selector with icons
+        role = st.selectbox(
+            "Select Role",
+            ["👤 Patient", "👩‍⚕️ Provider", "⚙️ Admin"],
+            key="role_selector"
+        )
+        
+        st.markdown("---")
+        
+        # Show relevant role information
+        if "Patient" in role:
+            st.info("Access and manage your digital therapeutic apps")
+            st.metric("Wellness Score", "85%", "↑ 12%")
+        elif "Provider" in role:
+            st.info("Prescribe and monitor digital therapeutics")
+            st.metric("Patient Engagement", "92%", "↑ 5%")
+        else:
+            st.info("Manage platform and analyze metrics")
+            st.metric("Platform Health", "98%", "↑ 2%")
+        
+        # Quick actions based on role
+        st.markdown("### Quick Actions")
+        if "Patient" in role:
+            st.button("🔔 Check Notifications")
+            st.button("📅 Schedule Review")
+        elif "Provider" in role:
+            st.button("📋 Patient Reviews")
+            st.button("➕ New Prescription")
+        else:
+            st.button("📊 Analytics Report")
+            st.button("⚡ System Status")
+        
+        # Help and support
+        with st.expander("ℹ️ Help & Support"):
+            st.write("""
+                Need assistance? Contact our support team:
+                - 📧 support@beaconhealth.com
+                - 📞 1-800-BEACON
+                - 💬 Live Chat (Business Hours)
+            """)
+    
+    # Main content based on role
+    if "Patient" in role:
+        show_patient_dashboard()
+    elif "Provider" in role:
+        show_provider_dashboard()
+    else:
+        show_admin_dashboard()
+
+if __name__ == "__main__":
+    main()
