@@ -186,3 +186,4 @@ if "achievements" in st.session_state and st.session_state["achievements"]:
 else:
     st.info("No achievements generated yet.")
 
+
