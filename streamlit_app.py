@@ -3,6 +3,7 @@ import streamlit.components.v1 as components
 from datetime import date
 import urllib.parse
 import pandas as pd
+from textwrap import dedent
 
 st.title("BadgeForge - Professional Achievement Badge Generator")
 
@@ -57,7 +58,8 @@ if st.button("Generate Badge"):
         qr_url = f"https://api.qrserver.com/v1/create-qr-code/?data={qr_encoded}&size=100x100"
 
         # Create the circular badge as an HTML string with a modern and sleek design.
-        badge_html = f"""<!DOCTYPE html>
+        badge_html = dedent(f"""\
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -156,10 +158,9 @@ if st.button("Generate Badge"):
     </div>
   </div>
 </body>
-</html>"""
+</html>
+""")
         st.success("Badge generated successfully!")
-
-        # Preview the badge in the app.
         components.html(badge_html, height=500, scrolling=True)
 
         # ----- Export Options -----
@@ -185,7 +186,3 @@ if "achievements" in st.session_state and st.session_state["achievements"]:
     st.dataframe(df)
 else:
     st.info("No achievements generated yet.")
-
-
-
-
