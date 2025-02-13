@@ -3,7 +3,11 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 
-# Initialize and connect to SQLite database (cached for performance)
+# ------------------------------------------------------------------------------
+# Database Setup and Demo Data Functions
+# ------------------------------------------------------------------------------
+
+# Use st.cache_resource to maintain a persistent DB connection for performance.
 @st.cache_resource
 def get_connection():
     return sqlite3.connect('beacon_health.db', check_same_thread=False)
@@ -12,13 +16,14 @@ conn = get_connection()
 cursor = conn.cursor()
 
 def init_db():
+    """Initialize database tables if they do not exist."""
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS apps (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             description TEXT,
             category TEXT,
-            fda_cleared TEXT,
+            fda_status TEXT,
             clinical_evidence_score REAL,
             user_experience_score REAL,
             security_compliance_score REAL,
@@ -54,19 +59,25 @@ def init_db():
     conn.commit()
 
 def load_demo_data():
+    """Load demo placeholder data for apps, prescriptions, progress, and messages."""
+    # Load health and wellness demo apps
     df_apps = pd.read_sql_query("SELECT * FROM apps", conn)
     if df_apps.empty:
         apps_demo = [
-            ("MindRelax", "A mindfulness and meditation app.", "Mental Health", "FDA Cleared", 4.5, 4.2, 4.8, 4.0),
-            ("FitTrack", "A fitness and activity tracking app.", "Wellness", "Pending", 4.0, 4.0, 4.5, 3.8),
-            ("SleepWell", "An app to improve sleep quality.", "Sleep Health", "FDA Cleared", 4.8, 4.6, 4.9, 4.5)
+            ("MindRelax", "A mindfulness and meditation app to reduce stress.", "Mental Health", "FDA Cleared", 4.5, 4.2, 4.8, 4.0),
+            ("FitTrack", "A fitness tracking app to monitor activities and workouts.", "Wellness", "Pending", 4.0, 4.0, 4.5, 3.8),
+            ("SleepWell", "An app designed to improve sleep quality through personalized routines.", "Sleep Health", "FDA Cleared", 4.8, 4.6, 4.9, 4.5),
+            ("NutriGuide", "Nutrition guidance and meal planning for a balanced diet.", "Nutrition", "FDA Cleared", 4.2, 4.3, 4.7, 4.2),
+            ("YogaFlow", "Offering yoga routines and wellness tips for everyday balance.", "Fitness", "Pending", 4.3, 4.4, 4.6, 4.1)
         ]
         cursor.executemany('''
-            INSERT INTO apps (name, description, category, fda_cleared, clinical_evidence_score, user_experience_score, security_compliance_score, integration_capabilities_score)
+            INSERT INTO apps 
+            (name, description, category, fda_status, clinical_evidence_score, user_experience_score, security_compliance_score, integration_capabilities_score)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', apps_demo)
         conn.commit()
 
+    # Load demo prescriptions
     df_prescriptions = pd.read_sql_query("SELECT * FROM prescriptions", conn)
     if df_prescriptions.empty:
         prescriptions_demo = [
@@ -79,6 +90,7 @@ def load_demo_data():
         ''', prescriptions_demo)
         conn.commit()
 
+    # Load demo progress tracking data
     df_progress = pd.read_sql_query("SELECT * FROM progress", conn)
     if df_progress.empty:
         progress_demo = [
@@ -91,6 +103,7 @@ def load_demo_data():
         ''', progress_demo)
         conn.commit()
 
+    # Load demo messages for communication system
     df_messages = pd.read_sql_query("SELECT * FROM messages", conn)
     if df_messages.empty:
         messages_demo = [
@@ -103,13 +116,28 @@ def load_demo_data():
         ''', messages_demo)
         conn.commit()
 
+def reset_demo_data():
+    """Reset the demo data by dropping and reinitializing all tables."""
+    cursor.execute("DROP TABLE IF EXISTS apps")
+    cursor.execute("DROP TABLE IF EXISTS prescriptions")
+    cursor.execute("DROP TABLE IF EXISTS messages")
+    cursor.execute("DROP TABLE IF EXISTS progress")
+    conn.commit()
+    init_db()
+    load_demo_data()
+    st.success("Demo data has been reset.")
+
+# Initialize DB and load demo data on app start
 init_db()
 load_demo_data()
 
-# Custom CSS for a modern UI look
+# ------------------------------------------------------------------------------
+# Custom CSS for a Modern, Clean UI
+# ------------------------------------------------------------------------------
 st.markdown(
     """
     <style>
+    /* Button styling */
     .stButton>button {
         background-color: #4CAF50;
         color: white;
@@ -117,50 +145,75 @@ st.markdown(
         border-radius: 4px;
         padding: 10px 20px;
         font-size: 16px;
+        cursor: pointer;
     }
-    .stTextInput>div>input, .stTextArea>div>textarea {
+    .stButton>button:hover {
+        background-color: #45a049;
+    }
+    /* Input styling */
+    .stTextInput>div>input, .stTextArea>div>textarea, .stSelectbox>div>div>div>input {
         padding: 10px;
         border: 1px solid #ccc;
         border-radius: 4px;
+    }
+    /* Sidebar styling */
+    .css-1d391kg {  
+        background-color: #f0f2f6;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
+# ------------------------------------------------------------------------------
+# Role-Based Views
+# ------------------------------------------------------------------------------
+
 def patient_view():
     st.header("Patient Dashboard")
     
     st.subheader("Digital Therapeutics Directory")
     apps_df = pd.read_sql_query("SELECT * FROM apps", conn)
-    st.dataframe(apps_df[['name', 'description', 'category', 'fda_cleared',
-                            'clinical_evidence_score', 'user_experience_score', 'security_compliance_score', 'integration_capabilities_score']])
+    # Display detailed information for each app
+    st.dataframe(apps_df[['name', 'description', 'category', 'fda_status',
+                            'clinical_evidence_score', 'user_experience_score', 
+                            'security_compliance_score', 'integration_capabilities_score']])
     
     st.subheader("My Prescriptions")
-    patient_name = "John Doe"
+    patient_name = "John Doe"  # Placeholder patient name
     prescriptions_df = pd.read_sql_query("""
-        SELECT prescriptions.*, apps.name as app_name 
+        SELECT prescriptions.*, apps.name AS app_name 
         FROM prescriptions 
         JOIN apps ON prescriptions.app_id = apps.id 
         WHERE patient_name=?
     """, conn, params=(patient_name,))
-    st.dataframe(prescriptions_df[['provider_name', 'app_name', 'prescription_date']])
+    if not prescriptions_df.empty:
+        st.dataframe(prescriptions_df[['provider_name', 'app_name', 'prescription_date']])
+    else:
+        st.info("No prescriptions found.")
     
     st.subheader("My Progress")
     progress_df = pd.read_sql_query("""
-        SELECT progress.*, apps.name as app_name 
+        SELECT progress.*, apps.name AS app_name 
         FROM progress 
         JOIN apps ON progress.app_id = apps.id 
         WHERE patient_name=?
     """, conn, params=(patient_name,))
-    st.dataframe(progress_df[['app_name', 'progress_percent']])
+    if not progress_df.empty:
+        st.dataframe(progress_df[['app_name', 'progress_percent']])
+    else:
+        st.info("No progress data available.")
     
     st.subheader("Messages")
     messages_df = pd.read_sql_query("""
         SELECT * FROM messages 
         WHERE sender=? OR receiver=?
+        ORDER BY timestamp DESC
     """, conn, params=(patient_name, patient_name))
-    st.dataframe(messages_df[['sender', 'receiver', 'message', 'timestamp']])
+    if not messages_df.empty:
+        st.dataframe(messages_df[['sender', 'receiver', 'message', 'timestamp']])
+    else:
+        st.info("No messages found.")
     
     st.markdown("### Send a Message")
     with st.form("patient_message_form"):
@@ -168,6 +221,7 @@ def patient_view():
         submit = st.form_submit_button("Send")
         if submit and message:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            # In a real app, receiver would be selected; here we use a placeholder.
             cursor.execute("INSERT INTO messages (sender, receiver, message, timestamp) VALUES (?, ?, ?, ?)", 
                            (patient_name, "Provider", message, timestamp))
             conn.commit()
@@ -184,33 +238,47 @@ def provider_view():
         app_name = st.selectbox("Select App", apps_df['name'].tolist())
         submit = st.form_submit_button("Prescribe")
         if submit:
-            app_id = pd.read_sql_query("SELECT id FROM apps WHERE name=?", conn, params=(app_name,)).iloc[0]['id']
-            prescription_date = datetime.now().strftime("%Y-%m-%d")
-            cursor.execute("INSERT INTO prescriptions (patient_name, provider_name, app_id, prescription_date) VALUES (?, ?, ?, ?)", 
-                           (patient_name, "Dr. Smith", app_id, prescription_date))
-            conn.commit()
-            st.success(f"Prescribed {app_name} to {patient_name}!")
-            st.experimental_rerun()
+            # Retrieve app id based on selected app name
+            app_id_row = pd.read_sql_query("SELECT id FROM apps WHERE name=?", conn, params=(app_name,))
+            if not app_id_row.empty:
+                app_id = app_id_row.iloc[0]['id']
+                prescription_date = datetime.now().strftime("%Y-%m-%d")
+                cursor.execute("INSERT INTO prescriptions (patient_name, provider_name, app_id, prescription_date) VALUES (?, ?, ?, ?)", 
+                               (patient_name, "Dr. Smith", app_id, prescription_date))
+                conn.commit()
+                st.success(f"Prescribed {app_name} to {patient_name}!")
+                st.experimental_rerun()
+            else:
+                st.error("Selected app not found.")
     
     st.subheader("Patient Progress")
+    # For demo purposes, we use a placeholder patient name.
     progress_df = pd.read_sql_query("""
-        SELECT progress.*, apps.name as app_name 
+        SELECT progress.*, apps.name AS app_name 
         FROM progress 
         JOIN apps ON progress.app_id = apps.id 
         WHERE patient_name=?
     """, conn, params=("John Doe",))
-    st.dataframe(progress_df[['patient_name', 'app_name', 'progress_percent']])
+    if not progress_df.empty:
+        st.dataframe(progress_df[['patient_name', 'app_name', 'progress_percent']])
+    else:
+        st.info("No progress updates available.")
     
     st.subheader("Patient Messages")
     messages_df = pd.read_sql_query("SELECT * FROM messages WHERE receiver=?", conn, params=("Dr. Smith",))
-    st.dataframe(messages_df[['sender', 'message', 'timestamp']])
+    if not messages_df.empty:
+        st.dataframe(messages_df[['sender', 'message', 'timestamp']])
+    else:
+        st.info("No messages from patients.")
 
 def admin_view():
     st.header("Admin Dashboard")
     
     st.subheader("Manage App Certifications")
     apps_df = pd.read_sql_query("SELECT * FROM apps", conn)
-    st.dataframe(apps_df[['name', 'fda_cleared', 'clinical_evidence_score', 'user_experience_score', 'security_compliance_score', 'integration_capabilities_score']])
+    st.dataframe(apps_df[['name', 'fda_status', 'clinical_evidence_score', 
+                            'user_experience_score', 'security_compliance_score', 
+                            'integration_capabilities_score']])
     
     with st.form("update_cert_form"):
         app_to_update = st.selectbox("Select App to Update", apps_df['name'].tolist())
@@ -223,7 +291,7 @@ def admin_view():
         if submit:
             cursor.execute("""
                 UPDATE apps 
-                SET fda_cleared=?, clinical_evidence_score=?, user_experience_score=?, security_compliance_score=?, integration_capabilities_score=?
+                SET fda_status=?, clinical_evidence_score=?, user_experience_score=?, security_compliance_score=?, integration_capabilities_score=?
                 WHERE name=?
             """, (fda_status, clinical_score, ux_score, security_score, integration_score, app_to_update))
             conn.commit()
@@ -231,7 +299,7 @@ def admin_view():
             st.experimental_rerun()
     
     st.subheader("User Management")
-    # Demo user list
+    # Demo user list (expandable in future with proper user tables)
     users_data = {
         "Name": ["John Doe", "Dr. Smith", "Admin User"],
         "Role": ["Patient", "Provider", "Admin"]
@@ -246,13 +314,35 @@ def admin_view():
     col1.metric("Total Apps", total_apps)
     col2.metric("Total Prescriptions", total_prescriptions)
     col3.metric("Total Messages", total_messages)
+    
+    st.subheader("Reset Demo Data")
+    if st.button("Reset All Demo Data"):
+        reset_demo_data()
+
+# ------------------------------------------------------------------------------
+# Main App Function with Role Switching
+# ------------------------------------------------------------------------------
 
 def main():
+    # Set page configuration for a modern, wide layout
     st.set_page_config(page_title="Beacon Health", layout="wide")
-    st.title("Beacon Health")
+    st.title("Beacon Health - Digital Therapeutics Marketplace")
     
-    # Role switching for demo purposes (no login required)
+    # Sidebar for role switching and future self-prompting instructions
+    st.sidebar.header("Demo Role Selector")
     role = st.sidebar.selectbox("Select Role", ["Patient", "Provider", "Admin"])
+    
+    # Developer note: In future, replace role switching with proper authentication
+    st.sidebar.info("Note: Role switching is for demo purposes only.\n\nFuture versions will include full authentication.")
+    
+    # Self-prompting reminder for developers
+    st.sidebar.markdown("""
+    **Developer To-Do:**
+    - Integrate real user authentication
+    - Expand messaging system for multi-party communication
+    - Enhance analytics with interactive charts
+    - Improve UI/UX with advanced theming and custom components
+    """)
     
     if role == "Patient":
         patient_view()
@@ -263,3 +353,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
