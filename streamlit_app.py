@@ -4,6 +4,99 @@ from datetime import date
 import urllib.parse
 import pandas as pd
 
+# HTML template parts
+HTML_START = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Achievement Badge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Great+Vibes&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Roboto', sans-serif;
+        }
+        .badge {
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1F2937, #4B5563);
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #fff;
+            text-align: center;
+            overflow: hidden;
+        }
+        .badge::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            mix-blend-mode: overlay;
+            pointer-events: none;
+        }
+        .badge-content {
+            position: relative;
+            z-index: 2;
+            padding: 0 20px;
+        }
+        .recipient {
+            font-family: 'Great Vibes', cursive;
+            font-size: 42px;
+            margin-bottom: 10px;
+        }
+        .achievement {
+            font-size: 20px;
+            font-weight: 300;
+            margin-bottom: 8px;
+        }
+        .issue-date {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .notes {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .qr-code {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            border: 3px solid #fff;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #fff;
+        }
+        .qr-code img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>"""
+
+HTML_END = """
+</body>
+</html>"""
+
 st.title("BadgeForge - Professional Achievement Badge Generator")
 
 # ----- User Input Section -----
@@ -51,99 +144,13 @@ if st.button("Generate Badge"):
     if not recipient_name:
         st.error("Please enter a recipient name.")
     else:
-        # Generate QR code URL using an online service
+        # Generate QR code URL
         qr_data = f"Name: {recipient_name}\nAchievement: {achievement}\nDate: {issue_date}"
         qr_encoded = urllib.parse.quote(qr_data)
         qr_url = f"https://api.qrserver.com/v1/create-qr-code/?data={qr_encoded}&size=100x100"
 
-        # Create the badge HTML with escaped curly braces for CSS
-        badge_html = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Achievement Badge</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&family=Great+Vibes&display=swap" rel="stylesheet">
-    <style>
-        body {{
-            background-color: #f9f9f9;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            font-family: 'Roboto', sans-serif;
-        }}
-        .badge {{
-            width: 400px;
-            height: 400px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #1F2937, #4B5563);
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            color: #fff;
-            text-align: center;
-            overflow: hidden;
-        }}
-        .badge::before {{
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-            mix-blend-mode: overlay;
-            pointer-events: none;
-        }}
-        .badge-content {{
-            position: relative;
-            z-index: 2;
-            padding: 0 20px;
-        }}
-        .recipient {{
-            font-family: 'Great Vibes', cursive;
-            font-size: 42px;
-            margin-bottom: 10px;
-        }}
-        .achievement {{
-            font-size: 20px;
-            font-weight: 300;
-            margin-bottom: 8px;
-        }}
-        .issue-date {{
-            font-size: 16px;
-            margin-bottom: 8px;
-        }}
-        .notes {{
-            font-size: 14px;
-            margin-bottom: 8px;
-        }}
-        .qr-code {{
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 80px;
-            height: 80px;
-            border: 3px solid #fff;
-            border-radius: 50%;
-            overflow: hidden;
-            background: #fff;
-        }}
-        .qr-code img {{
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }}
-    </style>
-</head>
-<body>
+        # Create badge content
+        badge_content = f"""
     <div class="badge">
         <div class="badge-content">
             <div class="recipient">{recipient_name}</div>
@@ -154,9 +161,10 @@ if st.button("Generate Badge"):
         <div class="qr-code">
             <img src="{qr_url}" alt="QR Code">
         </div>
-    </div>
-</body>
-</html>"""
+    </div>"""
+
+        # Combine all HTML parts
+        badge_html = HTML_START + badge_content + HTML_END
 
         st.success("Badge generated successfully!")
         components.html(badge_html, height=500, scrolling=True)
