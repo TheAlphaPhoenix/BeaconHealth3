@@ -128,9 +128,23 @@ def reset_demo_data():
     load_demo_data()
     st.success("Demo data has been reset.")
 
+def check_schema():
+    """Verify that the 'apps' table contains the expected columns; reset if not."""
+    expected_columns = {
+        "name", "description", "category", "fda_status", 
+        "clinical_evidence_score", "user_experience_score", 
+        "security_compliance_score", "integration_capabilities_score"
+    }
+    cur = conn.execute("PRAGMA table_info(apps)")
+    current_columns = {row[1] for row in cur.fetchall()}
+    if not expected_columns.issubset(current_columns):
+        st.warning("Apps table schema mismatch detected. Resetting demo data...")
+        reset_demo_data()
+
 # Initialize DB and load demo data on app start
 init_db()
 load_demo_data()
+check_schema()
 
 # ------------------------------------------------------------------------------
 # Custom CSS for a Modern, Clean UI
@@ -175,9 +189,14 @@ def patient_view():
     
     st.subheader("Digital Therapeutics Directory")
     apps_df = pd.read_sql_query("SELECT * FROM apps", conn)
-    st.dataframe(apps_df[['name', 'description', 'category', 'fda_status',
-                            'clinical_evidence_score', 'user_experience_score', 
-                            'security_compliance_score', 'integration_capabilities_score']])
+    # Ensure only the expected columns are displayed if they exist
+    expected_cols = [
+        'name', 'description', 'category', 'fda_status',
+        'clinical_evidence_score', 'user_experience_score', 
+        'security_compliance_score', 'integration_capabilities_score'
+    ]
+    available_cols = [col for col in expected_cols if col in apps_df.columns]
+    st.dataframe(apps_df[available_cols])
     
     st.subheader("My Prescriptions")
     patient_name = "John Doe"  # Placeholder patient name
@@ -273,9 +292,13 @@ def admin_view():
     
     st.subheader("Manage App Certifications")
     apps_df = pd.read_sql_query("SELECT * FROM apps", conn)
-    st.dataframe(apps_df[['name', 'fda_status', 'clinical_evidence_score', 
-                            'user_experience_score', 'security_compliance_score', 
-                            'integration_capabilities_score']])
+    expected_cols = [
+        'name', 'fda_status', 'clinical_evidence_score', 
+        'user_experience_score', 'security_compliance_score', 
+        'integration_capabilities_score'
+    ]
+    available_cols = [col for col in expected_cols if col in apps_df.columns]
+    st.dataframe(apps_df[available_cols])
     
     with st.form("update_cert_form"):
         app_to_update = st.selectbox("Select App to Update", apps_df['name'].tolist())
@@ -322,7 +345,7 @@ def admin_view():
 def main():
     st.title("Beacon Health - Digital Therapeutics Marketplace")
     
-    # Sidebar for role switching and future self-prompting instructions
+    # Sidebar for role switching and developer notes
     st.sidebar.header("Demo Role Selector")
     role = st.sidebar.selectbox("Select Role", ["Patient", "Provider", "Admin"])
     
@@ -344,5 +367,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
